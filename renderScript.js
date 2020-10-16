@@ -10,14 +10,14 @@ try {
 		center = [w / 2, h / 2];
 	
 	var cameraX = 0;
-    var cameraY = 0;
-    var cameraZ = 0;
-               
-    var cameraRotX = 0;
-    var cameraRotY = 0;
-    var cameraRotZ = 0;
-                
-                //these values only corespond to real space and not camera relative space. they are used as an offset for objects within camera relative space
+	var cameraY = 0;
+	var cameraZ = 0;
+			   
+	var cameraRotX = 0;
+	var cameraRotY = 0;
+	var cameraRotZ = 0;
+				
+				//these values only corespond to real space and not camera relative space. they are used as an offset for objects within camera relative space
 
 	// |x1 - x2| + |y1 - y2| + |z1 - z2| would be more stable
 	var dist = (x, y, z, x1, y1, z1) => sqrt((x1 - x) ** 2 + (y1 - y) ** 2 + (z1 - z) ** 2);
@@ -107,7 +107,7 @@ try {
 				}
 
 				var perspective = +document.querySelector("#persp").value;
-                this.perspective = perspective;
+				this.perspective = perspective;
 				var rayVector = [];
 				
 				var fullRotX = this.rx + cameraRotX;
@@ -145,10 +145,10 @@ try {
 					if (this.nodes[h] !== this.nodes[i]) {
 						if (dist(this.nodes[i].x, this.nodes[i].y, this.nodes[i].z, this.nodes[h].x, this.nodes[h].y, this.nodes[h].z) < this.startDist) {
 							if ((axisZ(this.x,this.y,this.z,cameraRotX,cameraRotY,cameraRotZ)-cameraZ) - this.nodes[i].z > this.perspective && (axisZ(this.x,this.y,this.z,cameraRotX,cameraRotY,cameraRotZ)-cameraZ) - this.nodes[h].z > this.perspective) {
-							    c.beginPath()
-							    c.moveTo(this.nodes[i].screenX, this.nodes[i].screenY);
-							    c.lineTo(this.nodes[h].screenX, this.nodes[h].screenY);
-							    c.stroke();
+								c.beginPath()
+								c.moveTo(this.nodes[i].screenX, this.nodes[i].screenY);
+								c.lineTo(this.nodes[h].screenX, this.nodes[h].screenY);
+								c.stroke();
 							}  
 						}
 					}
@@ -202,21 +202,21 @@ try {
 	createMesh(0, 0, 40 * 10, 40, "cube", "cube1", 90);
 
 	var j = 0;
-    var color = 0;
+	var color = 0;
 
 	function animate() {
 		requestAnimationFrame(animate);
-        c.fillStyle = "black";
+		c.fillStyle = "black";
 		c.fillRect(0, 0, innerWidth, innerHeight);
 
 		j += .02;
-        
-        cameraRotY = +document.querySelector("#yrot").value/25;
-        
-        color++;
-        
+		
+		cameraRotY = +document.querySelector("#yrot").value/25;
+		
+		color++;
+		
 		for (var o = 0; o < globalMeshArr.length; o++) {
-            c.strokeStyle = "HSL(" + color + ",100%,50%)";
+			c.strokeStyle = "HSL(" + color + ",100%,50%)";
 			c.fillStyle = "black";
 			/*globalMeshArr[o].ry += .02;
 			globalMeshArr[o].rx += .02;
@@ -226,7 +226,7 @@ try {
 			
 			
 		}
-        
+		
 	}
 
 	animate();
