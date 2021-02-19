@@ -16,6 +16,9 @@ try {
     var cameraRotX = 0;
     var cameraRotY = 0;
     var cameraRotZ = 0;
+	
+	var windowXratio = innerWidth/1920;
+	var windowYratio = innerHeight/1080;
     
                 
                 //these values only corespond to real space and not camera relative space. they are used as an offset for objects within camera relative space
@@ -116,7 +119,7 @@ try {
 				// offset coridinates to fit canvas 
 
 
-				var perspective = +document.querySelector("#persp").value;
+				var perspective = +document.querySelector("#persp").value/2;
                 this.perspective = perspective;
 				var rayVector = [];
 				
@@ -147,12 +150,12 @@ try {
 				var testVector = [];
 				testVector[0] = cameraNormal[0] - rayVector[0];
 				testVector[1] = cameraNormal[1] - rayVector[1];
-				testVector[2] = cameraNormal[2] * 10 - rayVector[2];
+				testVector[2] = cameraNormal[2] * 20 - rayVector[2];
 
 				var t = -(testVector[0] * cameraNormal[0] + testVector[1] * cameraNormal[1] + testVector[2] * cameraNormal[2]) / (cameraNormal[0] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 0) + cameraNormal[1] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 1) + cameraNormal[2] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 2));
 
-				this.nodes[i].screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0) + center[0];
-				this.nodes[i].screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1) + center[1];
+				this.nodes[i].screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0)*windowXratio*perspective + center[0];
+				this.nodes[i].screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1)*windowYratio*perspective + center[1];
                 
 			}
             
@@ -162,13 +165,13 @@ try {
             
             testVector[0] = cameraNormal[0] - rayVector[0];
 		    testVector[1] = cameraNormal[1] - rayVector[1];
-	       	testVector[2] = cameraNormal[2] * 10 - rayVector[2];
+	       	testVector[2] = cameraNormal[2] * 20 - rayVector[2];
                 
             var t = -(testVector[0] * cameraNormal[0] + testVector[1] * cameraNormal[1] + testVector[2] * cameraNormal[2]) / (cameraNormal[0] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 0) + cameraNormal[1] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 1) + cameraNormal[2] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 2));
                 
                 
-            this.screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0) + center[0];
-            this.screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1) + center[1];
+            this.screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0)*windowXratio*perspective + center[0];
+            this.screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1)*windowYratio*perspective + center[1];
             
 		}
 
@@ -254,7 +257,7 @@ try {
 		globalMeshArr.push(new Mesh(nodeMount, name, gx, gy, gz, thresh));
 	}
 
-	createMesh(0, 0, 40 * 10, 40, "cube", "cube1");
+	createMesh(0, 0, 100, 10, "cube", "cube1");
     var boxSelect = false;
     var dragging = false;
     var startX;
