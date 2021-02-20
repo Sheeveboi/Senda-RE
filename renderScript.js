@@ -19,6 +19,8 @@ try {
 	
 	var windowXratio = innerWidth/1920;
 	var windowYratio = innerHeight/1080;
+	
+	var cull = true;
     
                 
                 //these values only corespond to real space and not camera relative space. they are used as an offset for objects within camera relative space
@@ -43,11 +45,10 @@ try {
 		}
 	}
 
-	function Node(x, y, z, hashMap) {
+	function Node(x, y, z) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
-		this.hashMap = hashMap;
         this.renderPoint = true;
 
 		this.screenX = 0;
@@ -55,18 +56,24 @@ try {
         
         this.enlargePoint = false;
         this.selected = false;
+		
+		this.normal = [0,0,0];
+		
+		this.ax = 0;
+		this.ay = 0;
+		this.az = 0;
+		
+		this.cull = false;
+		this.cullset = false;
 	}
-    
-    function NodeProto(x, y, z, referanceHashes, hashMap) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        
-        this.referanceHashes = referanceHashes;
-        this.hashMap = hashMap;
-    }
+	function Face(nodes) {
+		this.nodes = nodes;
+		this.normal = [0,0,0];
+		this.cull = false;
+		this.origin = [0,0,0];
+	}
 
-	function Mesh(nodes, name, x, y, z) {
+	function Mesh(nodes, faces, name, x, y, z) {
 		this.nodes = nodes;
 		this.name = name;
 		this.x = x;
@@ -75,6 +82,8 @@ try {
 		this.rx = 0;
 		this.ry = 0;
 		this.rz = 0;
+		
+		this.faces = faces;
         
         this.screenY = 0;
         this.screenX = 0;
@@ -134,6 +143,10 @@ try {
 				rayVector[0] = ((axisX(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ))) + axisX(this.nodes[i].x,this.nodes[i].y,this.nodes[i].z,fullRotX,fullRotY,fullRotZ);
 				rayVector[1] = ((axisY(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ))) + axisY(this.nodes[i].x,this.nodes[i].y,this.nodes[i].z,fullRotX,fullRotY,fullRotZ);
 				rayVector[2] = ((axisZ(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ))) + axisZ(this.nodes[i].x,this.nodes[i].y,this.nodes[i].z,fullRotX,fullRotY,fullRotZ);
+				
+				this.nodes[i].ax = rayVector[0];
+				this.nodes[i].ay = rayVector[1];
+				this.nodes[i].az = rayVector[2];
                 
                 if (rayVector[2] < perspective) {
                     rayVector[2] = perspective;   
@@ -156,12 +169,12 @@ try {
 
 				this.nodes[i].screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0)*windowXratio*perspective + center[0];
 				this.nodes[i].screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1)*windowYratio*perspective + center[1];
-                
+				
 			}
             
-            rayVector[0] = axisX(this.fx,this.fy,this.fz,fullRotX,fullRotY,fullRotZ);
-	        rayVector[1] = axisY(this.fx,this.fy,this.fz,fullRotX,fullRotY,fullRotZ);
-			rayVector[2] = axisZ(this.fx,this.fy,this.fz,fullRotX,fullRotY,fullRotZ);
+            rayVector[0] = axisX(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ);
+	        rayVector[1] = axisY(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ);
+			rayVector[2] = axisZ(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ);
             
             testVector[0] = cameraNormal[0] - rayVector[0];
 		    testVector[1] = cameraNormal[1] - rayVector[1];
@@ -174,36 +187,161 @@ try {
             this.screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1)*windowYratio*perspective + center[1];
             
 		}
+		
+		this.setNormals = function() {
+			
+			//vertex normals
+			for (var k = 0; k < this.nodes.length; k++) { //traverse through node array to get index
+				var referancesTo = [];
+				var averageX = 0;
+				var averageY = 0;
+				var averageZ = 0;
+				for (var i = 0; i < this.faces.length; i++) {//access face hash array
+					for (var h = 0; h < this.faces[i].nodes.length; h++) {//traverse that array
+						if (k == this.faces[i].nodes[h]) { //if it identify's the node's index is within the current face array then add whats infront of it and whats behind it in `referancesTo` to calculate average vertex
+							if (h == this.faces[i].nodes.length-1) {
+								referancesTo.push(this.faces[i][h-1]);
+								referancesTo.push(this.faces[i][0]);
+								
+								averageX += this.nodes[this.faces[i].nodes[h-1]].ax;
+								averageY += this.nodes[this.faces[i].nodes[h-1]].ay;
+								averageZ += this.nodes[this.faces[i].nodes[h-1]].az;
+								
+								averageX += this.nodes[this.faces[i].nodes[0]].ax;
+								averageY += this.nodes[this.faces[i].nodes[0]].ay;
+								averageZ += this.nodes[this.faces[i].nodes[0]].az;
+							} else if (h == 0) {
+								referancesTo.push(this.faces[i].nodes[this.faces[i].length-1]);
+								referancesTo.push(this.faces[i].nodes[1]);
+								
+								averageX += this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].ax;
+								averageY += this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].ay;
+								averageZ += this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].az;
+								
+								averageX += this.nodes[this.faces[i].nodes[1]].ax;
+								averageY += this.nodes[this.faces[i].nodes[1]].ay;
+								averageZ += this.nodes[this.faces[i].nodes[1]].az;
+							} else {
+								referancesTo.push(this.faces[i].nodes[h-1]);
+								referancesTo.push(this.faces[i].nodes[h+1]);
+								
+								averageX += this.nodes[this.faces[i].nodes[h-1]].ax;
+								averageY += this.nodes[this.faces[i].nodes[h-1]].ay;
+								averageZ += this.nodes[this.faces[i].nodes[h-1]].az;
+								
+								averageX += this.nodes[this.faces[i].nodes[h+1]].ax;
+								averageY += this.nodes[this.faces[i].nodes[h+1]].ay;
+								averageZ += this.nodes[this.faces[i].nodes[h+1]].az;
+							}
+						}
+					}
+				}
+				averageX /= referancesTo.length;
+				averageY /= referancesTo.length;
+				averageZ /= referancesTo.length;
+				
+				//get vertex normal
+				
+				var magnitude = dist(averageX,averageY,averageZ,this.nodes[k].x,this.nodes[k].y,this.nodes[k].z);
+				this.nodes[k].normal[0] = (this.nodes[k].ax - averageX)/magnitude;
+				this.nodes[k].normal[1] = (this.nodes[k].ay - averageY)/magnitude;
+				this.nodes[k].normal[2] = (this.nodes[k].az - averageZ)/magnitude;
+			}
+			
+			//set face normals
+			for (var i = 0; i < this.faces.length; i++) {
+				var averageX = 0;
+				var averageY = 0;
+				var averageZ = 0;
+				var averageX2 = 0;
+				var averageY2 = 0;
+				var averageZ2 = 0;
+				for (var k = 0; k < this.faces[i].nodes.length; k++) {
+					averageX += this.nodes[this.faces[i].nodes[k]].normal[0] + this.nodes[this.faces[i].nodes[k]].ax;
+					averageY += this.nodes[this.faces[i].nodes[k]].normal[1] + this.nodes[this.faces[i].nodes[k]].ay;
+					averageZ += this.nodes[this.faces[i].nodes[k]].normal[2] + this.nodes[this.faces[i].nodes[k]].az;
+					averageX2 += this.nodes[this.faces[i].nodes[k]].ax;
+					averageY2 += this.nodes[this.faces[i].nodes[k]].ay;
+					averageZ2 += this.nodes[this.faces[i].nodes[k]].az;
+				}
+				averageX /= this.faces[i].nodes.length;
+				averageY /= this.faces[i].nodes.length;
+				averageZ /= this.faces[i].nodes.length;
+				averageX2 /= this.faces[i].nodes.length;
+				averageY2 /= this.faces[i].nodes.length;
+				averageZ2 /= this.faces[i].nodes.length;
+				
+				//normalization
+				var magnitude = dist(averageX,averageY,averageZ,averageX2,averageY2,averageZ2);
+				
+				this.faces[i].normal[0] = -((averageX - averageX2)/magnitude);
+				this.faces[i].normal[1] = -((averageY - averageY2)/magnitude);
+				this.faces[i].normal[2] = -((averageZ - averageZ2)/magnitude);
+				
+				this.faces[i].origin[0] = averageX2;
+				this.faces[i].origin[1] = averageY2;
+				this.faces[i].origin[2] = averageZ2;
+			}
+		}
+		
+		this.cullFaces = function() {
+			for (var i = 0; i < this.nodes.length; i++) {	
+				this.nodes[i].cullset = false;
+			}	
+			for (var i = 0; i < this.faces.length; i++) {				
+				var dot = (this.faces[i].origin[0] * this.faces[i].normal[0]) + (this.faces[i].origin[1] * this.faces[i].normal[1]) + (this.faces[i].origin[2] * this.faces[i].normal[2]);				
+				if (dot > 0) {
+					this.faces[i].cull = false;
+					for (var k = 0; k < this.faces[i].nodes.length; k++) {	
+						this.nodes[this.faces[i].nodes[k]].cull = false;
+						this.nodes[this.faces[i].nodes[k]].cullset = true;
+					}
+				} else {
+					this.faces[i].cull = true;
+					for (var k = 0; k < this.faces[i].nodes.length; k++) {	
+						if (this.nodes[this.faces[i].nodes[k]].cullset == false) {
+							this.nodes[this.faces[i].nodes[k]].cull = true;
+						}
+					}
+				}
+			}
+		}
 
 		this.render = function() {
 			this.setScreenCartesian();
-
-			for (var i = 0; i < this.nodes.length; i++) {
-				for (var h = 0; h < this.nodes[i].hashMap.length; h++) {
-                    try {
-                        if (this.nodes[i].renderPoint == true || this.nodes[this.nodes[i].hashMap[h]].renderPoint == true) {
-                            c.beginPath();
-                            c.moveTo(this.nodes[i].screenX, this.nodes[i].screenY);
-                            c.lineTo(this.nodes[this.nodes[i].hashMap[h]].screenX, this.nodes[this.nodes[i].hashMap[h]].screenY);
-                            c.stroke();
-                        }
-                    }
-                    catch {
-                    }
-                    if (this.nodes[i].enlargePoint == false && this.nodes[i].selected == false) {
-                        c.beginPath();
-                        c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 5, 0, Math.PI*2);
-                        c.fillStyle = "white";
-                        c.fill();
-                    } else {
-                        c.beginPath();
-                        c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 10, 0, Math.PI*2);
-                        c.fillStyle = "white";
-                        c.fill();   
-                    }
+			this.setNormals();
+			if (cull == true) {
+				this.cullFaces();
+			}
+			for (var i = 0; i < this.faces.length; i++) {
+				if (this.faces[i].cull == false) {
+					c.strokeStyle = "white";
+					c.moveTo(this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].screenX,this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].screenY);
+					c.lineTo(this.nodes[this.faces[i].nodes[0]].screenX,this.nodes[this.faces[i].nodes[0]].screenY);
+					c.stroke();
+					for (var h = 0; h < this.faces[i].nodes.length-1; h++) {
+						c.moveTo(this.nodes[this.faces[i].nodes[h]].screenX,this.nodes[this.faces[i].nodes[h]].screenY);
+						c.lineTo(this.nodes[this.faces[i].nodes[h+1]].screenX,this.nodes[this.faces[i].nodes[h+1]].screenY);
+						c.stroke();
+					}
 				}
-                c.fillStyle = "yellow";
-                //c.fillText(this.nodes[i].hashMap + " self: " + i,this.nodes[i].screenX+10,this.nodes[i].screenY+10);
+			}
+			
+			for (var i = 0; i < this.nodes.length; i++) {
+				if (this.nodes[i].cull == false) {
+					if (this.nodes[i].enlargePoint == false && this.nodes[i].selected == false) {
+						c.beginPath();
+						c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 5, 0, Math.PI*2);
+						c.fillStyle = "white";
+						c.fill();
+					} else {
+						c.beginPath();
+						c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 10, 0, Math.PI*2);
+						c.fillStyle = "white";
+						c.fill();   
+					}
+					c.fillText(i,this.nodes[i].screenX+10,this.nodes[i].screenY+10);
+				}
 			}
             if (this.enlargePoint == false && this.selected == false) {
                 c.fillStyle = "white";
@@ -217,8 +355,9 @@ try {
 
 	var globalMeshArr = [];
 
-	var createMesh = function(gx, gy, gz, size, type, name, thresh) {
+	var createMesh = function(gx, gy, gz, size, type, name) {
 		var nodeMount = [];
+		var faceHashes = [];
 
 		switch(type) {
 			case "point":
@@ -226,19 +365,26 @@ try {
 				break;
 
 			case undefined:
-				globalMeshArr.push(new Mesh(nodeMount, "unnamed", gx, gy, gz, thresh));
+				globalMeshArr.push(new Mesh(nodeMount, faceHashes, "unnamed", gx, gy, gz));
 				break;
 
 			case "cube": {
-				nodeMount.push(new Node(size, size, (size * -1), new Array(1,2,4) )); //0 
-				nodeMount.push(new Node((size * -1), size, (size * -1), new Array(5,0,3) )); //1
-				nodeMount.push(new Node(size, (size * -1), (size * -1), new Array(6,0,3) )); //2
-				nodeMount.push(new Node((size * -1), (size * -1), (size * -1), new Array(1,2,7) )); //3
-
-				nodeMount.push(new Node(size, size, size, new Array(5,6,0) )); //4
-				nodeMount.push(new Node((size * -1), size, size, new Array(4,7,1) )); //5
-				nodeMount.push(new Node(size, (size * -1), size, new Array(4,7,2) )); //6
-				nodeMount.push(new Node((size * -1), (size * -1), size, new Array(5,6,3) )); //7
+				nodeMount.push(new Node(size, size, -size)); //0 
+				nodeMount.push(new Node(-size, size, -size)); //1
+				nodeMount.push(new Node(-size, size, size)); //2
+				nodeMount.push(new Node(size, size, size)); //3
+				
+				nodeMount.push(new Node(size, -size, -size)); //4
+				nodeMount.push(new Node(-size, -size, -size)); //5
+				nodeMount.push(new Node(-size, -size, size)); //6
+				nodeMount.push(new Node(size, -size, size)); //7
+				
+				faceHashes.push(new Face([0,1,2,3]));
+				faceHashes.push(new Face([4,5,6,7]));
+				faceHashes.push(new Face([0,3,7,4]));
+				faceHashes.push(new Face([0,1,5,4]));
+				faceHashes.push(new Face([1,2,6,5]));
+				faceHashes.push(new Face([2,3,7,6]));
 
 				break;
 			}
@@ -253,8 +399,8 @@ try {
 				break;
 			}
 		}
-
-		globalMeshArr.push(new Mesh(nodeMount, name, gx, gy, gz, thresh));
+		
+		globalMeshArr.push(new Mesh(nodeMount, faceHashes, name, gx, gy, gz));
 	}
 
 	createMesh(0, 0, 100, 10, "cube", "cube1");
@@ -278,7 +424,7 @@ try {
                 }   
             }
             for (var h = 0; h < globalMeshArr[i].nodes.length; h++) {
-                if (dist(event.x,event.y,0,globalMeshArr[i].nodes[h].screenX,globalMeshArr[i].nodes[h].screenY,0) < 10) {
+                if (dist(event.x,event.y,0,globalMeshArr[i].nodes[h].screenX,globalMeshArr[i].nodes[h].screenY,0) < 10 && globalMeshArr[i].nodes[h].cull == false) {
                     if (globalMeshArr[i].nodes[h].selected == false) {
                         globalMeshArr[i].nodes[h].selected = true;  
                     } else {
@@ -307,14 +453,14 @@ try {
                 globalMeshArr[i].enlargePoint = false;
             }
             for (var h = 0; h < globalMeshArr[i].nodes.length; h++) {
-                if (dist(event.x,event.y,0,globalMeshArr[i].nodes[h].screenX,globalMeshArr[i].nodes[h].screenY,0) < 10) {
+                if (dist(event.x,event.y,0,globalMeshArr[i].nodes[h].screenX,globalMeshArr[i].nodes[h].screenY,0) < 10  && globalMeshArr[i].nodes[h].cull == false) {
                     globalMeshArr[i].nodes[h].enlargePoint = true;
                 } else {
                     globalMeshArr[i].nodes[h].enlargePoint = false;   
                 }
                 
                 if (dragging == true) {
-                    if (globalMeshArr[i].nodes[h].screenX > startX && globalMeshArr[i].nodes[h].screenX < event.x && globalMeshArr[i].nodes[h].screenY > startY && globalMeshArr[i].nodes[h].screenY < event.y) {
+                    if (globalMeshArr[i].nodes[h].screenX > startX && globalMeshArr[i].nodes[h].screenX < event.x && globalMeshArr[i].nodes[h].screenY > startY && globalMeshArr[i].nodes[h].screenY < event.y  && globalMeshArr[i].nodes[h].cull == false) {
                         globalMeshArr[i].nodes[h].selected = true; 
                         globalMeshArr[i].nodes[h].enlargePoint = true;
                     } else {
@@ -467,45 +613,6 @@ try {
                 
                 break;
                 
-            case "e":
-                for (var i = 0; i < globalMeshArr.length; i++) {
-                    var protoNodes = [];
-                    var nodeMount = []
-                    for (var u = 0; u < globalMeshArr[i].nodes.length; u++) {
-                        if (globalMeshArr[i].nodes[u].selected == true) {
-                            protoNodes.push(new NodeProto(globalMeshArr[i].nodes[u].x,globalMeshArr[i].nodes[u].y,globalMeshArr[i].nodes[u].z,globalMeshArr[i].nodes[u].hashMap,[u]));
-                            
-                            
-                        }
-                    }
-                    
-                    //alert(protoNodes[0].referanceHashes);
-                    
-                    for (var u = 0; u < protoNodes.length; u++) {
-                        for (var h = 0; h < protoNodes.length; h++) {
-                            for (var o = 0; o < protoNodes[h].referanceHashes.length; o++) {
-                                if (protoNodes[u] !== protoNodes[h]) {
-                                    if (protoNodes[u].hashMap[0] == protoNodes[h].referanceHashes[o]) {
-                                        protoNodes[u].hashMap.push(h + globalMeshArr[i].nodes.length+1);
-                                        //alert(protoNodes[u].hashMap[0] + ", " + protoNodes[h].referanceHashes[o]);
-                                    }
-                                }
-                            } 
-                        }
-                    }
-                    
-                    
-                    for (var u = 0; u < protoNodes.length; u++) {
-                        nodeMount.push(new Node(protoNodes[u].x,protoNodes[u].y*3,protoNodes[u].z,protoNodes[u].hashMap));
-                    }
-                    globalMeshArr[i].nodes = globalMeshArr[i].nodes.concat(nodeMount);
-                    
-                    //jesus fuck nobody is gonna be able to understand this... sucks to suck :)
-                    
-                    
-                }
-                break;
-                
         }
     });
 
@@ -547,7 +654,5 @@ try {
 
 	animate();
 } catch (err) {
-	alert(err);
+	console.log(err);
 }
-
-alert("compiled");
