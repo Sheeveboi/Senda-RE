@@ -180,7 +180,7 @@ try {
 		    testVector[1] = cameraNormal[1] - rayVector[1];
 	       	testVector[2] = cameraNormal[2] * 20 - rayVector[2];
                 
-            var t = -(testVector[0] * cameraNormal[0] + testVector[1] * cameraNormal[1] + testVector[2] * cameraNormal[2]) / (cameraNormal[0] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 0) + cameraNormal[1] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 1) + cameraNormal[2] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 2));
+            var t = -(testVector[0] * cameraNormal[0] + testVector[1] * cameraNormal[1] + testVector[2] * cameraNormal[2]) / (cameraNormal[0] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 0) + cameraNormal[1] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 1) + cameraNormal[2] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 2));  
                 
                 
             this.screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0)*windowXratio*perspective + center[0];
@@ -274,9 +274,9 @@ try {
 				//normalization
 				var magnitude = dist(averageX,averageY,averageZ,averageX2,averageY2,averageZ2);
 				
-				this.faces[i].normal[0] = -((averageX - averageX2)/magnitude);
-				this.faces[i].normal[1] = -((averageY - averageY2)/magnitude);
-				this.faces[i].normal[2] = -((averageZ - averageZ2)/magnitude);
+				this.faces[i].normal[0] = ((averageX2 - averageX)/magnitude);
+				this.faces[i].normal[1] = ((averageY2 - averageY)/magnitude);
+				this.faces[i].normal[2] = ((averageZ2 - averageZ)/magnitude);
 				
 				this.faces[i].origin[0] = averageX2;
 				this.faces[i].origin[1] = averageY2;
@@ -289,7 +289,7 @@ try {
 				this.nodes[i].cullset = false;
 			}	
 			for (var i = 0; i < this.faces.length; i++) {				
-				var dot = (this.faces[i].origin[0] * this.faces[i].normal[0]) + (this.faces[i].origin[1] * this.faces[i].normal[1]) + (this.faces[i].origin[2] * this.faces[i].normal[2]);				
+				var dot = (this.faces[i].origin[0] * this.faces[i].normal[0]) + (this.faces[i].origin[1] * this.faces[i].normal[1]) + ((this.faces[i].origin[2]-this.perspective) * this.faces[i].normal[2]);
 				if (dot > 0) {
 					this.faces[i].cull = false;
 					for (var k = 0; k < this.faces[i].nodes.length; k++) {	
@@ -310,9 +310,9 @@ try {
 		this.render = function() {
 			this.setScreenCartesian();
 			this.setNormals();
-			if (cull == true) {
-				this.cullFaces();
-			}
+            if (cull == true) {
+                this.cullFaces();
+            }
 			for (var i = 0; i < this.faces.length; i++) {
 				if (this.faces[i].cull == false) {
 					c.strokeStyle = "white";
