@@ -31,19 +31,28 @@ try {
 	var axisY = (x, y, z, angleX, angleY, angleZ) => (x*(sin(angleX)*cos(angleY))) + (y*((sin(angleX)*sin(angleY)*sin(angleZ))+(cos(angleX)*cos(angleZ)))) + (z*((sin(angleX)*sin(angleY)*cos(angleZ))-(cos(angleX)*sin(angleZ))));
 	var axisZ = (x, y, z, angleX, angleY, angleZ) => (x*(sin(angleY)*-1)) + (y*(cos(angleY)*sin(angleZ))) + (z*(cos(angleY)*cos(angleZ)))
     
-    function ray(x, y, z, x1, y1, z1, t, set) {
-		switch (set) {
-			case 0:
-				return x + t * (x1 - x);
-				break;
-	       	case 1:
-			return y + t * (y1 - y);
-				break;
-			case 2:
-			return z + t * (z1 - z);
-				break;
-		}
-	}
+    //i hate literally everything about these things btw ^^
+    
+    function raycast(p,p1,n) {
+        var para = (x,t,v) => x + t*v;
+        
+        var sx = p[0] - p1[0];
+        var sy = p[1] - p1[1];
+        var sz = p[2] - p1[2];
+        
+        var normalize = dist(0,0,0,sx,sy,sz);
+        
+        sx /= normalize;
+        sy /= normalize;
+        sz /= normalize;
+        
+        //t = -n-p/s
+        //t = (-nx - px) / sx + (-ny - py) / sy + (-nz - pz) / sz
+        
+        var t = (-n[0] - p[0]) / sx + (-n[1] - p[1]) / sy + (-n[2] - p[2]) / sz;
+        
+        return [para(p[0],t,sx),para(p[1],t,sy),para(p[2],t,sz)];
+    }
 
 	function Node(x, y, z) {
 		this.x = x;
@@ -93,40 +102,6 @@ try {
 
 		this.setScreenCartesian = function() {
 			for (var i = 0; i < this.nodes.length; i++) {
-				// let vector[x,y,z] be the amount of displacement
-				//  relative to the node to position of camera
-
-				// let node[x,y,z] be the camera relative cordinates of each node 
-
-				// let camera[x,y,z] = [0,0,0] as this defines camera
-				//  relative space instead of real space
-
-				// let real space be an offset value matrix for camera relative space 
-				// let the perspective scalar set how far away the plane each
-				//  ray is coliding with is away from the camera point
-
-				//  essentially, coordinates will shift around the camera
-				//  instead of the camera coordinates shifting around.
-				//  this creates camera relative space and real space
-				//  where real space is an offeset to camera space
-
-				// define parametric equasion for the ray
-				//  [x,y,z,x1,y1,z1] f(t) = [x + t(x1 - x),y + t(y1 - y),z + t(z1 - 1)] 
-
-				// let x,y,z = node[x,y,z]
-				// let x1,y1,z1 = camera[x,y,z]
-
-				// let the camera plane normal (n) vector coordinates
-				//  in camera relative space = [0,0,perspective]
-
-				// let the test vector (w) = [0,0,perspective] + [x,y,z]
-
-				// find t in f(t) with equasion
-				//  -(w[0] * n[0] + w[1] * n[1] + w[2] * n[2]) / (n[0] * p(0)[0] + n[1] * p(0)[1] + n[0] * p(0)[2])
-
-				// plug output of equasion into f(t) to get x,y cordinates
-				// offset coridinates to fit canvas 
-
 
 				var perspective = +document.querySelector("#persp").value/2;
                 this.perspective = perspective;
@@ -148,43 +123,39 @@ try {
 				this.nodes[i].ay = rayVector[1];
 				this.nodes[i].az = rayVector[2];
                 
-                if (rayVector[2] < perspective) {
-                    rayVector[2] = perspective;   
+                
+                /*if (rayVector[2] < -perspective) { 
                     this.nodes[i].renderPoint = false;
                 } else {
                     this.nodes[i].renderPoint = true;  
-                }
+                }*/
 
 				var cameraNormal = [];
 				cameraNormal[0] = 0;
 				cameraNormal[1] = 0;
-				cameraNormal[2] = perspective;
+				cameraNormal[2] = perspective*100;
 
-				var testVector = [];
-				testVector[0] = cameraNormal[0] - rayVector[0];
-				testVector[1] = cameraNormal[1] - rayVector[1];
-				testVector[2] = cameraNormal[2] * 20 - rayVector[2];
-
-				var t = -(testVector[0] * cameraNormal[0] + testVector[1] * cameraNormal[1] + testVector[2] * cameraNormal[2]) / (cameraNormal[0] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 0) + cameraNormal[1] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 1) + cameraNormal[2] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 2));
-
-				this.nodes[i].screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0)*windowXratio*perspective + center[0];
-				this.nodes[i].screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1)*windowYratio*perspective + center[1];
-				
+                this.nodes[i].screenX = raycast([rayVector[0], rayVector[1], rayVector[2]] , [0, 0, 0] , [cameraNormal[0], cameraNormal[1], cameraNormal[2]])[0]+center[0];
+                if (this.nodes[i].screenX == NaN) {
+                    this.nodes[i].screenX = 0;   
+                }
+                this.nodes[i].screenY = raycast([rayVector[0], rayVector[1], rayVector[2]] , [0, 0, 0] , [cameraNormal[0], cameraNormal[1], cameraNormal[2]])[1]+center[1];
+                if (this.nodes[i].screenY == NaN) {
+                    this.nodes[i].screenY = 0;   
+                }
 			}
             
             rayVector[0] = axisX(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ);
 	        rayVector[1] = axisY(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ);
 			rayVector[2] = axisZ(this.fx,this.fy,this.fz,cameraRotX,cameraRotY,cameraRotZ);
             
-            testVector[0] = cameraNormal[0] - rayVector[0];
-		    testVector[1] = cameraNormal[1] - rayVector[1];
-	       	testVector[2] = cameraNormal[2] * 20 - rayVector[2];
-                
-            var t = -(testVector[0] * cameraNormal[0] + testVector[1] * cameraNormal[1] + testVector[2] * cameraNormal[2]) / (cameraNormal[0] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 0) + cameraNormal[1] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 1) + cameraNormal[2] * ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, 0, 2));  
-                
-                
-            this.screenX = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 0)*windowXratio*perspective + center[0];
-            this.screenY = ray(rayVector[0], rayVector[1], rayVector[2], 0, 0, 0, t, 1)*windowYratio*perspective + center[1];
+            var cameraNormal = [];
+		    cameraNormal[0] = 0;
+			cameraNormal[1] = 0;
+			cameraNormal[2] = perspective*100;
+   
+            this.screenX = raycast([rayVector[0], rayVector[1], rayVector[2]] , [0, 0, 0] , [cameraNormal[0], cameraNormal[1], cameraNormal[2]])[0]+center[0];
+		    this.screenY = raycast([rayVector[0], rayVector[1], rayVector[2]] , [0, 0, 0] , [cameraNormal[0], cameraNormal[1], cameraNormal[2]])[1]+center[1];
             
 		}
 		
@@ -192,95 +163,97 @@ try {
 			
 			//vertex normals
 			for (var k = 0; k < this.nodes.length; k++) { //traverse through node array to get index
-				var referancesTo = [];
+				var referancesTo = 0;
 				var averageX = 0;
 				var averageY = 0;
 				var averageZ = 0;
 				for (var i = 0; i < this.faces.length; i++) {//access face hash array
 					for (var h = 0; h < this.faces[i].nodes.length; h++) {//traverse that array
-						if (k == this.faces[i].nodes[h]) { //if it identify's the node's index is within the current face array then add whats infront of it and whats behind it in `referancesTo` to calculate average vertex
-							if (h == this.faces[i].nodes.length-1) {
-								referancesTo.push(this.faces[i][h-1]);
-								referancesTo.push(this.faces[i][0]);
-								
-								averageX += this.nodes[this.faces[i].nodes[h-1]].ax;
-								averageY += this.nodes[this.faces[i].nodes[h-1]].ay;
-								averageZ += this.nodes[this.faces[i].nodes[h-1]].az;
-								
-								averageX += this.nodes[this.faces[i].nodes[0]].ax;
-								averageY += this.nodes[this.faces[i].nodes[0]].ay;
-								averageZ += this.nodes[this.faces[i].nodes[0]].az;
+						if (k == this.faces[i].nodes[h]) { //if it identify's the node's index is within the current face array then add whats infront of it and whats behind it
+                            var faceNodes = this.faces[i].nodes;
+                            var nodeBack = this.nodes[this.faces[i].nodes[h-1]];
+                            var nodeFront = this.nodes[this.faces[i].nodes[h+1]];
+							if (h == this.faces[i].nodes.length-1) {		
+                                nodeFront = this.nodes[faceNodes[0]];
 							} else if (h == 0) {
-								referancesTo.push(this.faces[i].nodes[this.faces[i].length-1]);
-								referancesTo.push(this.faces[i].nodes[1]);
+								nodeBack = this.nodes[faceNodes[faceNodes.length-1]];
+                            }
+						    averageX += nodeBack.ax;
+					       	averageY += nodeBack.ay;
+							averageZ += nodeBack.az;
 								
-								averageX += this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].ax;
-								averageY += this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].ay;
-								averageZ += this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].az;
-								
-								averageX += this.nodes[this.faces[i].nodes[1]].ax;
-								averageY += this.nodes[this.faces[i].nodes[1]].ay;
-								averageZ += this.nodes[this.faces[i].nodes[1]].az;
-							} else {
-								referancesTo.push(this.faces[i].nodes[h-1]);
-								referancesTo.push(this.faces[i].nodes[h+1]);
-								
-								averageX += this.nodes[this.faces[i].nodes[h-1]].ax;
-								averageY += this.nodes[this.faces[i].nodes[h-1]].ay;
-								averageZ += this.nodes[this.faces[i].nodes[h-1]].az;
-								
-								averageX += this.nodes[this.faces[i].nodes[h+1]].ax;
-								averageY += this.nodes[this.faces[i].nodes[h+1]].ay;
-								averageZ += this.nodes[this.faces[i].nodes[h+1]].az;
-							}
+							averageX += nodeFront.ax;
+							averageY += nodeFront.ay;
+							averageZ += nodeFront.az;
+                                
+                            referancesTo += 2;
 						}
 					}
 				}
-				averageX /= referancesTo.length;
-				averageY /= referancesTo.length;
-				averageZ /= referancesTo.length;
+                
+                
+				averageX /= referancesTo;
+				averageY /= referancesTo;
+				averageZ /= referancesTo;
 				
 				//get vertex normal
 				
 				var magnitude = dist(averageX,averageY,averageZ,this.nodes[k].x,this.nodes[k].y,this.nodes[k].z);
-				this.nodes[k].normal[0] = (this.nodes[k].ax - averageX)/magnitude;
-				this.nodes[k].normal[1] = (this.nodes[k].ay - averageY)/magnitude;
-				this.nodes[k].normal[2] = (this.nodes[k].az - averageZ)/magnitude;
+				this.nodes[k].normal[0] = Math.floor(((this.nodes[k].ax - averageX)/magnitude)*100000)/100000;
+				this.nodes[k].normal[1] = Math.floor(((this.nodes[k].ay - averageY)/magnitude)*100000)/100000;
+				this.nodes[k].normal[2] = Math.floor(((this.nodes[k].az - averageZ)/magnitude)*100000)/100000;
+                
+                //alert(this.nodes[k].normal[0] + ", " + this.nodes[k].normal[1] + ", " + this.nodes[k].normal[2])
 			}
 			
 			//set face normals
 			for (var i = 0; i < this.faces.length; i++) {
-				var averageX = 0;
-				var averageY = 0;
-				var averageZ = 0;
-				var averageX2 = 0;
-				var averageY2 = 0;
-				var averageZ2 = 0;
-				for (var k = 0; k < this.faces[i].nodes.length; k++) {
-					averageX += this.nodes[this.faces[i].nodes[k]].normal[0] + this.nodes[this.faces[i].nodes[k]].ax;
-					averageY += this.nodes[this.faces[i].nodes[k]].normal[1] + this.nodes[this.faces[i].nodes[k]].ay;
-					averageZ += this.nodes[this.faces[i].nodes[k]].normal[2] + this.nodes[this.faces[i].nodes[k]].az;
-					averageX2 += this.nodes[this.faces[i].nodes[k]].ax;
-					averageY2 += this.nodes[this.faces[i].nodes[k]].ay;
-					averageZ2 += this.nodes[this.faces[i].nodes[k]].az;
-				}
-				averageX /= this.faces[i].nodes.length;
-				averageY /= this.faces[i].nodes.length;
-				averageZ /= this.faces[i].nodes.length;
-				averageX2 /= this.faces[i].nodes.length;
-				averageY2 /= this.faces[i].nodes.length;
-				averageZ2 /= this.faces[i].nodes.length;
-				
-				//normalization
-				var magnitude = dist(averageX,averageY,averageZ,averageX2,averageY2,averageZ2);
-				
-				this.faces[i].normal[0] = ((averageX2 - averageX)/magnitude);
-				this.faces[i].normal[1] = ((averageY2 - averageY)/magnitude);
-				this.faces[i].normal[2] = ((averageZ2 - averageZ)/magnitude);
-				
-				this.faces[i].origin[0] = averageX2;
-				this.faces[i].origin[1] = averageY2;
-				this.faces[i].origin[2] = averageZ2;
+				var normal = [0,0,0];
+                //p = polygon
+                var nodes = this.faces[i].nodes;
+                
+                var averageX = 0,
+                    averageY = 0,
+                    averageZ = 0;
+
+                var testX = 0,
+                    testY = 0,
+                    testZ = 0;
+                for (var k = 0; k < nodes.length; k++) {
+                    var j = (k + 1) % (nodes.length);
+                    normal[0] += (this.nodes[nodes[k]].ay - this.nodes[nodes[j]].ay) * (this.nodes[nodes[k]].az + this.nodes[nodes[j]].az);
+                    normal[1] += (this.nodes[nodes[k]].az - this.nodes[nodes[j]].az) * (this.nodes[nodes[k]].ax + this.nodes[nodes[j]].ax);
+                    normal[2] += (this.nodes[nodes[k]].ax - this.nodes[nodes[j]].ax) * (this.nodes[nodes[k]].ay + this.nodes[nodes[j]].ay);
+
+                    averageX += this.nodes[nodes[k]].ax;
+                    averageY += this.nodes[nodes[k]].ay;
+                    averageZ += this.nodes[nodes[k]].az;
+
+                    testX += this.nodes[nodes[k]].normal[0];
+                    testY += this.nodes[nodes[k]].normal[1];
+                    testZ += this.nodes[nodes[k]].normal[2];
+                }
+                this.faces[i].normal[0] = normal[0];
+                this.faces[i].normal[1] = normal[1];
+                this.faces[i].normal[2] = normal[2];
+                
+                testX /= nodes.length;
+                testY /= nodes.length;
+                testZ /= nodes.length;
+                
+                if ((normal[0] < 0 && testX > 0) || (normal[0] > 0 && testX < 0)) {
+                    this.faces[i].normal[0] *= -1
+                }
+                if ((normal[1] < 0 && testY > 0) || (normal[1] > 0 && testY < 0)) {
+                    this.faces[i].normal[1] *= -1 
+                }
+                if ((normal[2] < 0 && testZ > 0) || (normal[2] > 0 && testZ < 0)) {
+                    this.faces[i].normal[2] *= -1
+                }
+                
+                this.faces[i].origin[0] = averageX/nodes.length;
+                this.faces[i].origin[1] = averageY/nodes.length;
+                this.faces[i].origin[2] = averageZ/nodes.length;
 			}
 		}
 		
@@ -288,9 +261,12 @@ try {
 			for (var i = 0; i < this.nodes.length; i++) {	
 				this.nodes[i].cullset = false;
 			}	
-			for (var i = 0; i < this.faces.length; i++) {				
-				var dot = (this.faces[i].origin[0] * this.faces[i].normal[0]) + (this.faces[i].origin[1] * this.faces[i].normal[1]) + ((this.faces[i].origin[2]-this.perspective) * this.faces[i].normal[2]);
-				if (dot > 0) {
+			for (var i = 0; i < this.faces.length; i++) {
+                var face = this.faces[i];
+                var magnitude = dist(0,0,this.perspective*100,face.origin[0],face.origin[1],face.origin[2]);
+				var dot = face.origin[0] * face.normal[0] + face.origin[1] * face.normal[1] + (face.origin[2]) * face.normal[2];
+                this.faces[i].dot = dot;
+				if (dot < 0) {
 					this.faces[i].cull = false;
 					for (var k = 0; k < this.faces[i].nodes.length; k++) {	
 						this.nodes[this.faces[i].nodes[k]].cull = false;
@@ -319,24 +295,33 @@ try {
 					c.moveTo(this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].screenX,this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].screenY);
 					c.lineTo(this.nodes[this.faces[i].nodes[0]].screenX,this.nodes[this.faces[i].nodes[0]].screenY);
 					c.stroke();
+                    var ax = 0;
+                    var ay = 0;
 					for (var h = 0; h < this.faces[i].nodes.length-1; h++) {
 						c.moveTo(this.nodes[this.faces[i].nodes[h]].screenX,this.nodes[this.faces[i].nodes[h]].screenY);
 						c.lineTo(this.nodes[this.faces[i].nodes[h+1]].screenX,this.nodes[this.faces[i].nodes[h+1]].screenY);
 						c.stroke();
 					}
+                    for (var h = 0; h < this.faces[i].nodes.length; h++) {
+                        ax += this.nodes[this.faces[i].nodes[h]].screenX;
+                        ay += this.nodes[this.faces[i].nodes[h]].screenY;   
+                    }
+                    ax /= this.faces[i].nodes.length;
+                    ay /= this.faces[i].nodes.length;
 				}
-			}
-			
+            }
+  
+            
 			for (var i = 0; i < this.nodes.length; i++) {
 				if (this.nodes[i].cull == false) {
 					if (this.nodes[i].enlargePoint == false && this.nodes[i].selected == false) {
 						c.beginPath();
-						c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 5, 0, Math.PI*2);
+						//c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 5, 0, Math.PI*2);
 						c.fillStyle = "white";
 						c.fill();
 					} else {
 						c.beginPath();
-						c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 10, 0, Math.PI*2);
+						//c.arc(this.nodes[i].screenX, this.nodes[i].screenY, 10, 0, Math.PI*2);
 						c.fillStyle = "white";
 						c.fill();   
 					}
@@ -350,6 +335,8 @@ try {
                 c.fillStyle = "white";
                 c.fillRect(this.screenX-5,this.screenY-5,10,10); 
             }
+            c.fillStyle = "white";
+            c.fillText(this.x + ", " + this.y + ", " + this.z,this.screenX + 5, this.screenY + 5);
 		}
 	}
 
@@ -403,7 +390,7 @@ try {
 		globalMeshArr.push(new Mesh(nodeMount, faceHashes, name, gx, gy, gz));
 	}
 
-	createMesh(0, 0, 100, 10, "cube", "cube1");
+	createMesh(1, 1, 100, 10, "cube", "cube1");
     var boxSelect = false;
     var dragging = false;
     var startX;
@@ -487,8 +474,10 @@ try {
         }
     });
     var axisSelect;
-    var snap = 1;
+    var snap = .01;
     var control = false;
+    var rotating = false;
+    var translating = true;
     window.addEventListener("keydown", function(event) {
         switch (event.key) {
             case "x":
@@ -502,13 +491,22 @@ try {
                 break;
                 
             case "Control":
-                snap = 20;
+                snap = 2;
                 control = true;
                 break;
                 
                 
             case "Shift":
                 boxSelect = true;
+                break;
+                
+            case "r":
+                rotating = true;
+                translating = false;
+                break;
+            case "t":
+                translating = true;
+                rotating = false;
                 break;
                 
             case "a":
@@ -523,17 +521,32 @@ try {
                     for (var i = 0; i < globalMeshArr.length; i++) {
                         for (var h = 0; h < globalMeshArr[i].nodes.length; h++) {
                             if (globalMeshArr[i].selected == true) {
-                                switch (axisSelect) {
-                                    case "x" :
-                                        globalMeshArr[i].x += snap;
-                                        break;
-                                    case "y" :
-                                        globalMeshArr[i].y -= snap;
-                                        break;
-                                    case "z" :
-                                        globalMeshArr[i].z += snap;
-                                        break;
-                                }   
+                                if (translating == true) {
+                                    switch (axisSelect) {
+                                        case "x" :
+                                            globalMeshArr[i].x += snap;
+                                            break;
+                                        case "y" :
+                                            globalMeshArr[i].y -= snap;
+                                            break;
+                                        case "z" :
+                                            globalMeshArr[i].z += snap;
+                                            break;
+                                    } 
+                                }
+                                if (rotating == true) {
+                                    switch (axisSelect) {
+                                        case "x" :
+                                            globalMeshArr[i].rx += snap/10;
+                                            break;
+                                        case "y" :
+                                            globalMeshArr[i].ry -= snap/10;
+                                            break;
+                                        case "z" :
+                                            globalMeshArr[i].rz += snap/10;
+                                            break;
+                                    } 
+                                }
                             }
                             if (globalMeshArr[i].nodes[h].selected == true) {
                                 switch (axisSelect) {
@@ -564,17 +577,32 @@ try {
                     for (var i = 0; i < globalMeshArr.length; i++) {
                         for (var h = 0; h < globalMeshArr[i].nodes.length; h++) {
                             if (globalMeshArr[i].selected == true) {
-                                switch (axisSelect) {
-                                    case "x" :
-                                        globalMeshArr[i].x -= snap;
-                                        break;
-                                    case "y" :
-                                        globalMeshArr[i].y += snap;
-                                        break;
-                                    case "z" :
-                                        globalMeshArr[i].z -= snap;
-                                        break;
-                                }   
+                                if (translating == true) {
+                                    switch (axisSelect) {
+                                        case "x" :
+                                            globalMeshArr[i].x -= snap;
+                                            break;
+                                        case "y" :
+                                            globalMeshArr[i].y += snap;
+                                            break;
+                                        case "z" :
+                                            globalMeshArr[i].z -= snap;
+                                            break;
+                                    }   
+                                }
+                                if (rotating == true) {
+                                    switch (axisSelect) {
+                                        case "x" :
+                                            globalMeshArr[i].rx -= snap/10;
+                                            break;
+                                        case "y" :
+                                            globalMeshArr[i].ry += snap/10;
+                                            break;
+                                        case "z" :
+                                            globalMeshArr[i].rz -= snap/10;
+                                            break;
+                                    }    
+                                }
                             }
                             if (globalMeshArr[i].nodes[h].selected == true) {
                                 switch (axisSelect) {
@@ -620,7 +648,7 @@ try {
     window.addEventListener("keyup",function(event) {
         switch (event.key) {
             case "Control" :
-                snap = 1;
+                snap = .01;
                 control = false;
                 break;
             case "Shift" :
@@ -643,6 +671,9 @@ try {
 		for (var o = 0; o < globalMeshArr.length; o++) {
             c.strokeStyle = "white";
 			c.fillStyle = "black";
+            //globalMeshArr[o].rx += .01;
+            //globalMeshArr[o].ry += .01;
+            //globalMeshArr[o].rz += .01;
 			globalMeshArr[o].render();			
 		}
         
