@@ -17,8 +17,11 @@ try {
     var cameraRotY = 0;
     var cameraRotZ = 0;
 	
-	var windowXratio = innerWidth/1920;
-	var windowYratio = innerHeight/1080;
+	var xResolution = 300;
+	var yResolution = 168;
+	
+	var windowXratio = innerWidth/xResolution;
+	var windowYratio = innerHeight/yResolution;
 	
 	var cull = true;
     
@@ -88,9 +91,9 @@ try {
 		this.x = x;
 		this.y = y * -1;
 		this.z = z;
-		this.rx = 0;
+		this.rx = .15;
 		this.ry = 0;
-		this.rz = 0;
+		this.rz = .15;
 		
 		this.faces = faces;
         
@@ -210,7 +213,8 @@ try {
 			for (var i = 0; i < this.faces.length; i++) {
 				var normal = [0,0,0];
                 //p = polygon
-                var nodes = this.faces[i].nodes;
+				var face = this.faces[i];
+                var nodes = face.nodes;
                 
                 var averageX = 0,
                     averageY = 0,
@@ -233,27 +237,27 @@ try {
                     testY += this.nodes[nodes[k]].normal[1];
                     testZ += this.nodes[nodes[k]].normal[2];
                 }
-                this.faces[i].normal[0] = normal[0];
-                this.faces[i].normal[1] = normal[1];
-                this.faces[i].normal[2] = normal[2];
+                face.normal[0] = normal[0];
+                face.normal[1] = normal[1];
+                face.normal[2] = normal[2];
                 
                 testX /= nodes.length;
                 testY /= nodes.length;
                 testZ /= nodes.length;
                 
                 if ((normal[0] < 0 && testX > 0) || (normal[0] > 0 && testX < 0)) {
-                    this.faces[i].normal[0] *= -1
+                    face.normal[0] *= -1
                 }
                 if ((normal[1] < 0 && testY > 0) || (normal[1] > 0 && testY < 0)) {
-                    this.faces[i].normal[1] *= -1 
+                    face.normal[1] *= -1 
                 }
                 if ((normal[2] < 0 && testZ > 0) || (normal[2] > 0 && testZ < 0)) {
-                    this.faces[i].normal[2] *= -1
+                    face.normal[2] *= -1
                 }
                 
-                this.faces[i].origin[0] = averageX/nodes.length;
-                this.faces[i].origin[1] = averageY/nodes.length;
-                this.faces[i].origin[2] = averageZ/nodes.length;
+                face.origin[0] = averageX/nodes.length;
+                face.origin[1] = averageY/nodes.length;
+                face.origin[2] = averageZ/nodes.length;
 			}
 		}
 		
@@ -263,20 +267,25 @@ try {
 			}	
 			for (var i = 0; i < this.faces.length; i++) {
                 var face = this.faces[i];
+				var nodes = face.nodes;
+				
                 var magnitude = dist(0,0,this.perspective*100,face.origin[0],face.origin[1],face.origin[2]);
+				
 				var dot = face.origin[0] * face.normal[0] + face.origin[1] * face.normal[1] + (face.origin[2]) * face.normal[2];
+				
                 this.faces[i].dot = dot;
+				
 				if (dot < 0) {
-					this.faces[i].cull = false;
-					for (var k = 0; k < this.faces[i].nodes.length; k++) {	
-						this.nodes[this.faces[i].nodes[k]].cull = false;
-						this.nodes[this.faces[i].nodes[k]].cullset = true;
+					face.cull = false;
+					for (var k = 0; k < nodes.length; k++) {	
+						this.nodes[nodes[k]].cull = false;
+						this.nodes[nodes[k]].cullset = true;
 					}
 				} else {
-					this.faces[i].cull = true;
-					for (var k = 0; k < this.faces[i].nodes.length; k++) {	
-						if (this.nodes[this.faces[i].nodes[k]].cullset == false) {
-							this.nodes[this.faces[i].nodes[k]].cull = true;
+					face.cull = true;
+					for (var k = 0; k < nodes.length; k++) {	
+						if (this.nodes[nodes[k]].cullset == false) {
+							this.nodes[nodes[k]].cull = true;
 						}
 					}
 				}
@@ -291,23 +300,27 @@ try {
             }
 			for (var i = 0; i < this.faces.length; i++) {
 				if (this.faces[i].cull == false) {
+					var face = this.faces[i];
+					var nodes = face.nodes;
+					
+					
 					c.strokeStyle = "white";
-					c.moveTo(this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].screenX,this.nodes[this.faces[i].nodes[this.faces[i].nodes.length-1]].screenY);
-					c.lineTo(this.nodes[this.faces[i].nodes[0]].screenX,this.nodes[this.faces[i].nodes[0]].screenY);
+					c.moveTo(this.nodes[nodes[nodes.length-1]].screenX,this.nodes[nodes[nodes.length-1]].screenY);
+					c.lineTo(this.nodes[nodes[0]].screenX,this.nodes[nodes[0]].screenY);
 					c.stroke();
                     var ax = 0;
                     var ay = 0;
-					for (var h = 0; h < this.faces[i].nodes.length-1; h++) {
-						c.moveTo(this.nodes[this.faces[i].nodes[h]].screenX,this.nodes[this.faces[i].nodes[h]].screenY);
-						c.lineTo(this.nodes[this.faces[i].nodes[h+1]].screenX,this.nodes[this.faces[i].nodes[h+1]].screenY);
+					for (var h = 0; h < nodes.length-1; h++) {
+						c.moveTo(this.nodes[nodes[h]].screenX,this.nodes[nodes[h]].screenY);
+						c.lineTo(this.nodes[nodes[h+1]].screenX,this.nodes[nodes[h+1]].screenY);
 						c.stroke();
 					}
-                    for (var h = 0; h < this.faces[i].nodes.length; h++) {
-                        ax += this.nodes[this.faces[i].nodes[h]].screenX;
-                        ay += this.nodes[this.faces[i].nodes[h]].screenY;   
+                    for (var h = 0; h < nodes.length; h++) {
+                        ax += this.nodes[nodes[h]].screenX;
+                        ay += this.nodes[nodes[h]].screenY;   
                     }
-                    ax /= this.faces[i].nodes.length;
-                    ay /= this.faces[i].nodes.length;
+                    ax /= nodes.length;
+                    ay /= nodes.length;
 				}
             }
   
@@ -391,6 +404,60 @@ try {
 	}
 
 	createMesh(1, 1, 100, 10, "cube", "cube1");
+	
+	
+	var indexArr = [];
+	for (var i = 0; i < xResolution*yResolution; i++) {
+		indexArr.push(undefined);
+	}
+	
+	function findPixel(x,y,w) {
+		return (x + (y * w)) * 4;
+	}
+	
+	function renderFrameBuffer() {
+		var drawbuf = c.createImageData(xResolution,yResolution);
+		for (var i = 0; i < globalMeshArr.length; i++) {
+			var mesh = globalMeshArr[i];
+			mesh.setScreenCartesian();
+			mesh.setNormals();
+			for (var h = 0; h < mesh.faces.length; h++) {
+				var face = mesh.faces[h];
+				for (var o = 0; o < face.nodes.length; o++) {
+					var node = face.nodes[o];
+					var oA = (o + 1) % (face.nodes.length);
+					var nodeFront = face.nodes[oA];
+					
+					var backX = mesh.nodes[node].screenX/windowXratio;
+					var backY = mesh.nodes[node].screenY/windowYratio;
+						
+					var frontX = mesh.nodes[nodeFront].screenX/windowXratio;
+					var frontY = mesh.nodes[nodeFront].screenY/windowYratio;
+					
+					var distance = sqrt((frontX - backX) ** 2 + (frontY - backY) ** 2);
+					var vx = (frontX - backX) / distance,
+						vy = (frontY - backY) / distance;
+					console.log(vy + ", " + vx);
+						
+					for (var t = 0; t < distance; t++) {
+						var paraX = backX + t * vx;
+						var paraY = backY + t * vy;
+						
+						var index = findPixel(Math.floor(paraX),Math.floor(paraY),xResolution);
+						//console.log(index);
+						drawbuf.data[index - 1] = 255;
+						drawbuf.data[index - 0] = 255;
+						drawbuf.data[index + 1] = 255;
+						drawbuf.data[index + 2] = 255;
+					}
+				}
+			}
+		}
+		c.putImageData(drawbuf,0,0);
+		c.
+		alert("done!");
+	}
+	
     var boxSelect = false;
     var dragging = false;
     var startX;
@@ -480,6 +547,8 @@ try {
     var translating = true;
     window.addEventListener("keydown", function(event) {
         switch (event.key) {
+			case "l":
+				renderFrameBuffer();
             case "x":
                 axisSelect = "x"
                 break;
@@ -669,13 +738,11 @@ try {
         
         
 		for (var o = 0; o < globalMeshArr.length; o++) {
-            c.strokeStyle = "white";
-			c.fillStyle = "black";
-            //globalMeshArr[o].rx += .01;
-            //globalMeshArr[o].ry += .01;
-            //globalMeshArr[o].rz += .01;
-			globalMeshArr[o].render();			
+            globalMeshArr[o].rx += .01;
+            globalMeshArr[o].ry += .01;
+            globalMeshArr[o].rz += .01;		
 		}
+		renderFrameBuffer();
         
         if (boxSelect == true) {
             c.strokeRect(startX,startY,boxX-startX,boxY-startY);
