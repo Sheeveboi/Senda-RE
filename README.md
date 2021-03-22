@@ -1,2 +1,2 @@
-# 3d raycast-projection JS-editon
+# Sedna RE JS-editon
 in the future I (Sheeve) will be moving everything over to C++ or another low lever language so i can take full advantage of the system and achieve maximum performance. It is currently based in JavaScript as a mock up and demonstration of the general techniques and practices used. Feel free to improve, modify, and submit your changes in a pull request to further the development of this engine. This in an open source project after all 
