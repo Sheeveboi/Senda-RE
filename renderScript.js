@@ -357,8 +357,8 @@ try {
 		globalMeshArr.push(new Mesh(nodeMount, faceHashes, name, gx, gy, gz));
 	}
 
-	createMesh(1, 1, 100, 10, "cube", "cube1");
-    //createMesh(1, 30, 200, 100, "plane", "plane1");
+	//createMesh(1, 1, 100, 10, "cube", "cube1");
+    createMesh(1, 1, 200, 50, "plane", "plane1");
 	
 	
 	var indexArr = [];
@@ -429,21 +429,54 @@ try {
                 var frontX = nodeFront.screenX/windowXratio;
                 var frontY = nodeFront.screenY/windowYratio;
                 
-                for (var t = 0; t < distance; t++) {
-                    var paraX = Math.floor(backX + t * ((frontX - backX) / distance));   
-                    var paraY = Math.floor(backY + t * ((frontY - backY) / distance));
+                //friendship ended with parametrics. bresenham equation is my new best friend
+                
+                //prerequisites: backNode < frontNode always
+                if (backX > frontX) {
+                    var temp0 = backX;
+                    var temp1 = backY;
                     
-                    if (paraX > xResolution) paraX = xResolution;
-                    if (paraY > yResolution) paraY = yResolution;
-                    if (paraX < 0) paraX = 0;
-                    if (paraY < 0) paraY = 0;
+                    backX = frontX;
+                    backY = frontY;
+                    frontX = temp0;
+                    frontY = temp1;
                     
-                    var index = findPixel(paraX,paraY,xResolution);
-                    
-                    drawBuffer.data[index] = 0;
-                    drawBuffer.data[index + 1] = 0;
-                    drawBuffer.data[index + 2] = 0;
-                    drawBuffer.data[index + 3] = 255;
+                    //swapping vertexes if front node is behind back node
+                }
+                
+                var slope = (frontY - backY) / (frontX - backX);
+                if (Math.abs(slope) < 1) {
+                    let y = backY;
+                    for (let x = backX; x <= frontX; x++) {
+                        y += slope;
+                        var index = findPixel(Math.floor(x),Math.floor(y),xResolution);
+
+                        drawBuffer.data[index] = 0;
+                        drawBuffer.data[index + 1] = 0;
+                        drawBuffer.data[index + 2] = 0;
+                        drawBuffer.data[index + 3] = 255;
+                    }
+                } else {
+                    if (backY < frontY) {
+                        var temp0 = backX;
+                        var temp1 = backY;
+
+                        backX = frontX;
+                        backY = frontY;
+                        frontX = temp0;
+                        frontY = temp1; 
+                    }
+                    let x = frontX;
+                    slope = (frontX - backX) / (frontY - backY);
+                    for (let y = frontY; y <= backY; y++) {
+                        x += slope;
+                        var index = findPixel(Math.floor(x),Math.floor(y),xResolution);
+
+                        drawBuffer.data[index] = 0;
+                        drawBuffer.data[index + 1] = 0;
+                        drawBuffer.data[index + 2] = 0;
+                        drawBuffer.data[index + 3] = 255;
+                    }   
                 }
 			}
                 
